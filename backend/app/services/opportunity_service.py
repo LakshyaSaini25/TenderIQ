@@ -592,8 +592,10 @@ class OpportunityService:
 
     async def download_document(self, opportunity_id: str, doc_index: int):
         """
-        Proxies tender document downloads with proper portal session and referer headers
-        to bypass portal 'Unauthorized Page' restrictions.
+        Proxies tender document access with proper portal session and referer headers.
+        - If the stored URL is a NIC/GePNIC portal detail page, serves the portal HTML
+          as a readable proxied page (the user can see the tender details and any zip links).
+        - If the URL is a direct file (PDF/ZIP etc.), streams it as a download.
         """
         opp = await self.opportunity_repo.get_by_id(opportunity_id)
         if not opp:
@@ -608,56 +610,131 @@ class OpportunityService:
         if not doc_url:
             raise HTTPException(status_code=400, detail="Document has no URL")
 
-        source_url = opp.get("source_url") or "https://eprocure.gov.in"
-        from urllib.parse import urlparse
+        from urllib.parse import urlparse, urljoin
+        import httpx
+        from fastapi.responses import HTMLResponse, Response, StreamingResponse
+
         parsed = urlparse(doc_url)
         portal_origin = f"{parsed.scheme}://{parsed.netloc}"
 
+        # Determine referer: use eprocure.gov.in for NIC portals, else the portal origin
+        is_nic_portal = any(host in parsed.netloc for host in [
+            "eprocure.gov.in", "coalindiatenders.nic.in", "eprocurebhel.co.in",
+            "eprocurentpc.nic.in", "etenders.gov.in", "eprocurebpcl.in",
+            "bpcltenders.eproc.in", "nic.in"
+        ])
+        referer = "https://eprocure.gov.in/" if is_nic_portal else portal_origin
+
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Referer": source_url,
-            "Origin": portal_origin,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+            "Accept-Language": "en-US,en;q=0.9",
+            "Referer": referer,
         }
-        import httpx
-        from fastapi.responses import Response, RedirectResponse
-        transport = httpx.AsyncHTTPTransport(retries=3, verify=False)
+
+        transport = httpx.AsyncHTTPTransport(retries=2, verify=False)
 
         try:
-            async with httpx.AsyncClient(transport=transport, headers=headers, timeout=35.0, follow_redirects=True) as client:
-                # Prime session on target portal if needed
-                try:
-                    await client.get(source_url)
-                except Exception:
-                    pass
+            async with httpx.AsyncClient(transport=transport, headers=headers, timeout=30.0, follow_redirects=True) as client:
+                # Prime session on eprocure.gov.in portal before hitting the target
+                if is_nic_portal:
+                    try:
+                        await client.get("https://eprocure.gov.in/cppp/latestactivetendersnew/cpppdata",
+                                        headers={"Referer": "https://eprocure.gov.in/"})
+                    except Exception:
+                        pass
 
-                doc_resp = await client.get(doc_url, headers={"Referer": source_url})
-                content_type = doc_resp.headers.get("content-type", "application/octet-stream").split(";")[0].strip()
+                doc_resp = await client.get(doc_url, headers={"Referer": referer})
+                content_type = doc_resp.headers.get("content-type", "").split(";")[0].strip().lower()
 
-                # If server returned an HTML error or restart/unauthorized page
-                if "unauthorized area" in doc_resp.text.lower() or "service=restart" in doc_resp.text.lower():
-                    # Fallback: Redirect user to the portal page where they can access it directly
-                    return RedirectResponse(url=source_url)
+                # ── Case 1: Actual binary file (PDF, ZIP, DOC, etc.) ──────────────────
+                binary_types = ["application/pdf", "application/zip", "application/octet-stream",
+                                "application/msword", "application/vnd.openxmlformats",
+                                "application/vnd.ms-excel"]
+                is_binary = any(bt in content_type for bt in binary_types)
 
-                # Generate clean filename
-                safe_filename = "".join(c for c in doc_title if c.isalnum() or c in (" ", ".", "_", "-")).strip()
-                if not any(safe_filename.lower().endswith(ext) for ext in [".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx", ".rar"]):
-                    if "pdf" in content_type:
-                        safe_filename += ".pdf"
-                    elif "zip" in content_type:
-                        safe_filename += ".zip"
-                    else:
-                        safe_filename += ".pdf"
+                if is_binary and len(doc_resp.content) > 1024:
+                    safe_name = "".join(c for c in doc_title if c.isalnum() or c in " ._-").strip()
+                    if not any(safe_name.lower().endswith(e) for e in [".pdf", ".zip", ".doc", ".docx", ".xls", ".xlsx"]):
+                        ext_map = {"pdf": ".pdf", "zip": ".zip", "msword": ".doc", "excel": ".xls"}
+                        for k, v in ext_map.items():
+                            if k in content_type:
+                                safe_name += v
+                                break
+                        else:
+                            safe_name += ".pdf"
+                    return Response(
+                        content=doc_resp.content,
+                        media_type=content_type or "application/octet-stream",
+                        headers={"Content-Disposition": f'attachment; filename="{safe_name}"'}
+                    )
 
-                return Response(
-                    content=doc_resp.content,
-                    media_type=content_type,
-                    headers={
-                        "Content-Disposition": f'attachment; filename="{safe_filename}"'
-                    }
-                )
+                # ── Case 2: HTML page (portal detail page) ─────────────────────────────
+                # Serve the portal page as HTML with base tag so relative assets load.
+                # Also inject a banner so the user knows this is a proxied page.
+                html = doc_resp.text
+
+                # Check for unauthorized / session expired
+                if any(phrase in html.lower() for phrase in [
+                    "unauthorized area", "service=restart", "you are attempting to access",
+                    "invalid url", "please check"
+                ]):
+                    # Try once more with a fresh session by hitting listing first
+                    try:
+                        await client.get(referer)
+                        doc_resp2 = await client.get(doc_url, headers={"Referer": referer})
+                        html = doc_resp2.text
+                    except Exception:
+                        pass
+
+                # Inject <base> tag and a top banner
+                banner_html = f"""
+<div style="position:sticky;top:0;z-index:9999;background:#1e3a5f;color:#fff;padding:10px 16px;font-family:sans-serif;font-size:13px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 8px rgba(0,0,0,0.3)">
+  <span>📋 <strong>TenderMate Portal Viewer</strong> — You are viewing the official tender portal page for: <em>{doc_title}</em></span>
+  <div style="display:flex;gap:8px">
+    <a href="{doc_url}" target="_blank" style="color:#7dd3fc;text-decoration:none;font-size:12px;">↗ Open Original</a>
+    <button onclick="window.close()" style="background:#ef4444;border:none;color:white;padding:4px 10px;border-radius:4px;cursor:pointer;font-size:12px;">✕ Close</button>
+  </div>
+</div>
+"""
+                # Insert base tag and banner after <body> or at the top
+                base_tag = f'<base href="{portal_origin}/">'
+                if "<head>" in html:
+                    html = html.replace("<head>", f"<head>\n{base_tag}", 1)
+                else:
+                    html = base_tag + html
+
+                if "<body" in html:
+                    body_end = html.index("<body") + html[html.index("<body"):].index(">") + 1
+                    html = html[:body_end] + "\n" + banner_html + html[body_end:]
+                else:
+                    html = banner_html + html
+
+                return HTMLResponse(content=html, status_code=200)
+
         except Exception as e:
-            logger.error(f"Error proxying document download {doc_url}: {e}")
-            from fastapi.responses import RedirectResponse
-            return RedirectResponse(url=source_url)
+            logger.error(f"Error proxying document {doc_url}: {e}")
+            # Fallback: serve a simple redirect page
+            fallback_html = f"""<!DOCTYPE html>
+<html>
+<head><title>TenderMate — Document Access</title></head>
+<body style="font-family:sans-serif;padding:40px;max-width:600px;margin:auto">
+  <h2>📋 Tender Document Access</h2>
+  <p>TenderMate could not automatically load the document. This may happen due to portal session expiry.</p>
+  <p><strong>Document:</strong> {doc_title}</p>
+  <p>Click the button below to open the portal page directly. You may need to be logged in or accept cookies on the portal.</p>
+  <a href="{doc_url}" target="_blank"
+     style="display:inline-block;background:#2563eb;color:white;padding:10px 20px;border-radius:6px;text-decoration:none;margin-top:12px">
+    ↗ Open on Government Portal
+  </a>
+  <br><br>
+  <a href="https://eprocure.gov.in/cppp/latestactivetendersnew/cpppdata" target="_blank"
+     style="display:inline-block;background:#64748b;color:white;padding:8px 16px;border-radius:6px;text-decoration:none;font-size:13px">
+    🏛️ Go to CPPP Portal Homepage
+  </a>
+  <p style="color:#64748b;font-size:12px;margin-top:20px">Error: {str(e)[:200]}</p>
+</body>
+</html>"""
+            from fastapi.responses import HTMLResponse as _HTMLResponse
+            return _HTMLResponse(content=fallback_html, status_code=200)
 

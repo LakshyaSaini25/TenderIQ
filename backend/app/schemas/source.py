@@ -1,6 +1,7 @@
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, HttpUrl, Field, field_serializer
 from typing import Optional
-from datetime import datetime
+from typing import Optional, List
+from datetime import datetime, timezone
 from enum import Enum
 
 class SourceType(str, Enum):
@@ -50,3 +51,34 @@ class SourceResponse(BaseModel):
         # Serialize using aliases so JSON key is "_id"
         "serialize_by_alias": True,
     }
+
+    @field_serializer("last_checked_at", "created_at", "updated_at")
+    def serialize_dt(self, dt: Optional[datetime]) -> Optional[str]:
+        """Always emit datetimes as UTC ISO 8601 with Z suffix so the browser parses them correctly."""
+        if dt is None:
+            return None
+        # If the datetime is naive (no tzinfo), assume it is UTC
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        else:
+            dt = dt.astimezone(timezone.utc)
+        return dt.strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3] + "Z"
+
+
+# ─── Source Discovery Schemas ─────────────────────────────────────────────────
+
+class DiscoverRequest(BaseModel):
+    """Request body for POST /sources/discover"""
+    state: str
+    city: Optional[str] = None
+
+
+class RecommendedSource(BaseModel):
+    """A portal recommended by the discovery engine for a given location."""
+    name: str
+    url: str
+    type: str
+    description: str
+    tags: List[str] = []
+    relevance_score: int
+    is_curated: bool = True

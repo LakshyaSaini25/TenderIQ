@@ -499,10 +499,11 @@ export function Opportunities() {
                         📄 {doc.title || `Tender Document ${idx + 1}`}
                       </span>
                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                        {/* Primary Download via backend proxy to bypass portal Unauthorized error */}
+                        {/* Primary: Open via TenderMate backend proxy (sets correct Referer/session) */}
                         <a
                           href={api.getDocumentDownloadUrl(selectedOpp._id, idx)}
-                          download
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="btn btn-sm"
                           style={{
                             background: '#059669',
@@ -516,37 +517,15 @@ export function Opportunities() {
                             alignItems: 'center',
                             gap: '4px'
                           }}
-                          title="Downloads document directly via TenderMate backend session"
+                          title="Opens official portal document page via TenderMate's authenticated session (bypasses Unauthorized error)"
                         >
-                          📥 Download Document
-                        </a>
-
-                        {/* Direct portal link */}
-                        <a
-                          href={doc.url}
-                          target="_blank"
-                          rel="noopener"
-                          referrerPolicy="no-referrer-when-downgrade"
-                          className="btn btn-sm btn-secondary"
-                          style={{
-                            fontSize: '0.8rem',
-                            padding: '6px 10px',
-                            textDecoration: 'none',
-                            borderRadius: '4px',
-                            whiteSpace: 'nowrap'
-                          }}
-                          title="Open portal document link in new tab"
-                        >
-                          ↗ Open Portal Link
+                          📋 View / Download Document
                         </a>
                       </div>
                     </div>
                   ))}
                 </div>
 
-                <div style={{ marginTop: '12px', padding: '10px 14px', background: '#eff6ff', borderRadius: '6px', fontSize: '0.8rem', color: '#1e40af', lineHeight: 1.4 }}>
-                  💡 <strong>Document Access Note:</strong> Government portals (such as NTPC, Coal India, or CPPP) protect direct document links with session security and show an <em>"Unauthorized Page"</em> if accessed directly from external links. Always click <strong>"📥 Download Document"</strong> to download directly through TenderMate's authenticated session proxy.
-                </div>
               </>
             ) : selectedOpp.detail_enriching ? (
               <div style={{ marginTop: '12px', padding: '16px', background: '#f0f9ff', borderRadius: '6px', border: '1px solid #bae6fd', color: '#0369a1' }}>

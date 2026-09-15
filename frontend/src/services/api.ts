@@ -1,4 +1,4 @@
-import { Source, SourceCreate, SourceUpdate, Category, AIProcessResult, AIHealthResult } from '../types';
+import { Source, SourceCreate, SourceUpdate, Category, AIProcessResult, AIHealthResult, RecommendedSource } from '../types';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -60,6 +60,13 @@ class ApiService {
   deleteSource(id: string) {
     return this.request<void>(`/sources/${id}`, {
       method: 'DELETE',
+    });
+  }
+
+  discoverSources(state: string, city?: string) {
+    return this.request<RecommendedSource[]>('/sources/discover', {
+      method: 'POST',
+      body: JSON.stringify({ state, city: city && city !== 'All Cities' ? city : undefined }),
     });
   }
 

@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, status
 from typing import List
-from app.schemas.source import SourceResponse, SourceCreate, SourceUpdate
+from app.schemas.source import SourceResponse, SourceCreate, SourceUpdate, DiscoverRequest, RecommendedSource
 from app.services.source_service import SourceService
+from app.services.source_discovery_service import discover_sources
 
 router = APIRouter()
 
@@ -22,6 +23,16 @@ async def read_source(source_id: str, service: SourceService = Depends(get_sourc
 async def create_source(source_in: SourceCreate, service: SourceService = Depends(get_source_service)):
     """Add a new source to track."""
     return await service.create_source(source_in)
+
+@router.post("/discover", response_model=List[RecommendedSource])
+async def discover_tender_sources(body: DiscoverRequest):
+    """
+    Discover relevant tender portal sources for the given Indian state and optional city.
+    Returns a scored, ranked list of recommended sources drawn from a curated database
+    of 80+ known Indian tender portals plus live DuckDuckGo search results.
+    """
+    results = await discover_sources(state=body.state, city=body.city)
+    return results
 
 @router.put("/{source_id}", response_model=SourceResponse)
 async def update_source(source_id: str, source_in: SourceUpdate, service: SourceService = Depends(get_source_service)):

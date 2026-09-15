@@ -195,3 +195,14 @@ export interface AIHealthResult {
   error?: string | null;
 }
 
+// ─── Source Discovery ─────────────────────────────────────────────────────────
+
+export interface RecommendedSource {
+  name: string;
+  url: string;
+  type: string;
+  description: string;
+  tags: string[];
+  relevance_score: number;
+  is_curated: boolean;
+}
