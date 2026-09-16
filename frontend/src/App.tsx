@@ -4,6 +4,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Sources } from './pages/Sources';
 import { Content } from './pages/Content';
 import { Opportunities } from './pages/Opportunities';
+import { ExploreTenders } from './pages/ExploreTenders';
 import { useEffect, useState } from 'react';
 import { api } from './services/api';
 
@@ -41,6 +42,7 @@ function App() {
 
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/explore" element={<ExploreTenders />} />
           <Route path="/opportunities" element={<Opportunities />} />
           <Route path="/sources" element={<Sources />} />
           <Route path="/content" element={<Content />} />

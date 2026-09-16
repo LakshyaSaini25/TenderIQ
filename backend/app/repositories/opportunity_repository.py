@@ -100,6 +100,11 @@ class OpportunityRepository:
         updated_doc = await self.collection.find_one({"_id": ObjectId(existing_id)})
         return "UPDATED", self._convert_id(updated_doc)
 
+    async def create(self, opportunity_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Creates or updates an opportunity and returns the saved document."""
+        _status, doc = await self.upsert_opportunity(opportunity_data)
+        return doc
+
     async def get_all(
         self,
         source_id: Optional[str] = None,

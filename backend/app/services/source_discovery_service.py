@@ -692,3 +692,42 @@ async def discover_sources(state: str, city: Optional[str] = None) -> List[dict]
     # 4. Return top 30 results
     return all_results[:30]
 
+
+def get_curated_sources(category: Optional[str] = None, search: Optional[str] = None) -> List[dict]:
+    """
+    Returns all curated recommended sources, optionally filtered by category tag or text search.
+    """
+    results = []
+    for portal in CURATED_PORTALS:
+        if category and category.lower() != "all":
+            cat_lower = category.lower()
+            cat_match = (
+                any(cat_lower in t.lower() for t in portal.get("tags", []))
+                or cat_lower in portal.get("type", "").lower()
+            )
+            if not cat_match:
+                continue
+
+        if search and search.strip():
+            s_term = search.lower().strip()
+            text_match = (
+                s_term in portal["name"].lower()
+                or s_term in portal.get("description", "").lower()
+                or any(s_term in t.lower() for t in portal.get("tags", []))
+            )
+            if not text_match:
+                continue
+
+        results.append({
+            "name": portal["name"],
+            "url": portal["url"],
+            "type": portal["type"],
+            "description": portal["description"],
+            "tags": portal.get("tags", []),
+            "relevance_score": portal.get("relevance_base", 85),
+            "is_curated": True,
+        })
+
+    results.sort(key=lambda x: x["relevance_score"], reverse=True)
+    return results
+

@@ -206,3 +206,90 @@ export interface RecommendedSource {
   relevance_score: number;
   is_curated: boolean;
 }
+
+// ─── Explore Tenders (Tender247) ─────────────────────────────────────────────
+
+export interface ExploreTenderItem {
+  tender_id: number;
+  requirement_workbrief?: string;
+  estimatedcost?: number;
+  tender_endsubmission_datetime?: string;
+  site_location?: string;
+  organization_name?: string;
+  doc_uploaded?: boolean;
+  security_code?: string;
+  earnest_money_deposite?: number;
+  is_favourite?: boolean | null;
+  ai_summary?: boolean;
+  show_tender_endsubmission?: boolean;
+  boq_line_item?: string;
+  is_boq_line_item?: number;
+  submission_enddate?: string;
+}
+
+export interface ExploreSearchPayload {
+  tab_id?: number;
+  tender_id?: number;
+  tender_number?: string;
+  search_text?: string;
+  refine_search_text?: string;
+  boq?: boolean;
+  city_ids?: string;
+  closing_date_from?: string;
+  closing_date_to?: string;
+  exact_search?: boolean;
+  exact_search_text?: boolean;
+  gem?: number;
+  guest_user_id?: number;
+  is_ai_summary?: boolean;
+  is_tender_doc_uploaded?: boolean;
+  keyword_id?: number;
+  mfa?: string;
+  msme?: number;
+  nameof_website?: string;
+  organization_ids?: number;
+  organization_name?: string;
+  organization_type_id?: number;
+  organization_type_fallback?: string;
+  page_no?: number;
+  product_id?: number;
+  publication_date_from?: string;
+  publication_date_to?: string;
+  quantity?: string;
+  quantityOperator?: number;
+  record_per_page?: number;
+  search_by?: number;
+  search_by_location?: boolean;
+  search_by_split_word?: boolean;
+  sort_by?: number;
+  sort_type?: number;
+  startup?: number;
+  state_ids?: string;
+  statezone_ids?: string;
+  sub_industry_id?: number;
+  tender_typeid?: number;
+  tender_value_from?: number;
+  tender_value_operator?: number;
+  tender_value_to?: number;
+  [key: string]: any;
+}
+
+export interface ExploreAISearchResponse {
+  status: string;
+  data?: {
+    url?: string;
+    test_url?: string;
+    payload?: ExploreSearchPayload;
+  };
+  meta?: any;
+}
+
+export interface ExploreSearchResponse {
+  Success: boolean;
+  Message: string;
+  TotalRecord: number;
+  IsAuthFailure?: boolean;
+  Data: ExploreTenderItem[];
+  StatusCode?: number;
+  used_search_by?: number;
+}

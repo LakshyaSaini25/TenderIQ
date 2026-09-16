@@ -13,6 +13,9 @@ from app.repositories.category_repository import CategoryRepository
 from app.repositories.location_repository import LocationRepository
 from app.repositories.ai_log_repository import AILogRepository
 
+import asyncio
+from app.services.crawl_scheduler import get_crawl_scheduler
+
 # Configure basic logging
 logging.basicConfig(
     level=logging.INFO,
@@ -34,9 +37,19 @@ async def lifespan(app: FastAPI):
     await LocationRepository().seed_if_empty()
     logger.info("MongoDB indexes verified/created & initial data seeded.")
 
+    # Start automated crawl scheduler
+    scheduler = get_crawl_scheduler()
+    scheduler_task = asyncio.create_task(scheduler.start())
+    logger.info("Automated Crawl Scheduler background worker launched.")
     
     yield
     # Shutdown event
+    await scheduler.stop()
+    try:
+        scheduler_task.cancel()
+        await scheduler_task
+    except (asyncio.CancelledError, Exception):
+        pass
     await close_mongo_connection()
 
 app = FastAPI(

@@ -1,4 +1,4 @@
-import { Source, SourceCreate, SourceUpdate, Category, AIProcessResult, AIHealthResult, RecommendedSource } from '../types';
+import { Source, SourceCreate, SourceUpdate, Category, AIProcessResult, AIHealthResult, RecommendedSource, ExploreAISearchResponse, ExploreSearchResponse, ExploreSearchPayload } from '../types';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -67,6 +67,24 @@ class ApiService {
     return this.request<RecommendedSource[]>('/sources/discover', {
       method: 'POST',
       body: JSON.stringify({ state, city: city && city !== 'All Cities' ? city : undefined }),
+    });
+  }
+
+  getCuratedSources(category?: string, search?: string) {
+    const params = new URLSearchParams();
+    if (category && category !== 'All') params.append('category', category);
+    if (search && search.trim()) params.append('search', search.trim());
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return this.request<RecommendedSource[]>(`/sources/curated${query}`);
+  }
+
+  getSchedulerStatus() {
+    return this.request<any>('/sources/scheduler/status');
+  }
+
+  triggerSchedulerNow() {
+    return this.request<{ success: boolean; message: string; triggered: any[] }>('/sources/scheduler/run-now', {
+      method: 'POST',
     });
   }
 
@@ -164,6 +182,56 @@ class ApiService {
 
   checkAIHealth() {
     return this.request<AIHealthResult>('/ai/health');
+  }
+
+  // Explore Tenders
+  getExploreStates() {
+    return this.request<{ state_id: number; state_name: string }[]>('/explore/states');
+  }
+
+  getExploreCities(stateId: string | number) {
+    return this.request<{ city_id: number; city_name: string }[]>(`/explore/cities?state_id=${stateId}`);
+  }
+
+  exploreAISearch(query: string, variables: any = {}) {
+    return this.request<ExploreAISearchResponse>('/explore/ai-search', {
+      method: 'POST',
+      body: JSON.stringify({ query, variables }),
+    });
+  }
+
+  exploreSearchTenders(payload: ExploreSearchPayload) {
+    return this.request<ExploreSearchResponse>('/explore/search', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  exploreCountTenders(payload: ExploreSearchPayload) {
+    return this.request<{ Success: boolean; Data: { tendercount: number }[]; StatusCode: number }>('/explore/count', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  }
+
+  exploreAISearchWithResults(query: string, variables: any = {}) {
+    return this.request<{
+      status: string;
+      ai_data: ExploreAISearchResponse;
+      search_result: ExploreSearchResponse;
+      count_result: any;
+      payload: ExploreSearchPayload;
+    }>('/explore/ai-search-with-results', {
+      method: 'POST',
+      body: JSON.stringify({ query, variables }),
+    });
+  }
+
+  importExploredTender(tender: any) {
+    return this.request<{ success: boolean; message: string; opportunity_id?: string }>('/explore/import', {
+      method: 'POST',
+      body: JSON.stringify({ tender }),
+    });
   }
 }
 

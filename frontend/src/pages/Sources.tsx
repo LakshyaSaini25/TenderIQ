@@ -3,9 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import { Source, SourceCreate, OpportunityCollectSummary, RecommendedSource, SourceType, CrawlFrequency } from '../types';
 import { SourceFormModal } from '../components/sources/SourceFormModal';
-import { STATE_NAMES, getCitiesForState } from '../data/india_locations';
 
-// ─── Type badge colours ────────────────────────────────────────────────────────
+// ─── Type Badge Colors ─────────────────────────────────────────────────────────
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
   GOVERNMENT:       { bg: '#dbeafe', color: '#1e40af' },
   TENDER_PORTAL:    { bg: '#fef9c3', color: '#854d0e' },
@@ -34,33 +33,6 @@ function TypeBadge({ type }: { type: string }) {
   );
 }
 
-// ─── Shimmer skeleton card ────────────────────────────────────────────────────
-function ShimmerCard() {
-  return (
-    <div style={{
-      background: '#f8fafc',
-      border: '1px solid #e2e8f0',
-      borderRadius: '10px',
-      padding: '16px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '10px',
-    }}>
-      {[100, 60, 80, 40].map((w, i) => (
-        <div key={i} style={{
-          height: i === 0 ? '16px' : '12px',
-          width: `${w}%`,
-          background: 'linear-gradient(90deg, #e2e8f0 25%, #f1f5f9 50%, #e2e8f0 75%)',
-          backgroundSize: '200% 100%',
-          borderRadius: '4px',
-          animation: 'shimmer 1.4s infinite',
-        }} />
-      ))}
-      <style>{`@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }`}</style>
-    </div>
-  );
-}
-
 // ─── Recommended Source Card ──────────────────────────────────────────────────
 function RecommendedCard({
   rec,
@@ -78,7 +50,7 @@ function RecommendedCard({
       background: added ? '#f0fdf4' : '#fff',
       border: `1px solid ${added ? '#86efac' : '#e2e8f0'}`,
       borderRadius: '10px',
-      padding: '16px',
+      padding: '18px',
       display: 'flex',
       flexDirection: 'column',
       gap: '10px',
@@ -103,75 +75,71 @@ function RecommendedCard({
         </span>
       )}
 
-      {/* Header row */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', paddingRight: '72px' }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#1e293b', marginBottom: '2px' }}>
-            {rec.name}
-          </div>
-          <a
-            href={rec.url}
-            target="_blank"
-            rel="noreferrer"
-            style={{ fontSize: '0.75rem', color: '#2563eb', textDecoration: 'none', wordBreak: 'break-all' }}
-          >
-            {rec.url}
-          </a>
+      <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px', paddingRight: '70px' }}>
+          <TypeBadge type={rec.type} />
         </div>
+        <h4 style={{ margin: '4px 0 2px 0', fontSize: '0.95rem', fontWeight: 600, color: '#1e293b' }}>
+          {rec.name}
+        </h4>
+        <a
+          href={rec.url}
+          target="_blank"
+          rel="noreferrer"
+          style={{ fontSize: '0.75rem', color: '#2563eb', wordBreak: 'break-all', textDecoration: 'none' }}
+        >
+          {rec.url}
+        </a>
       </div>
 
-      {/* Type badge + relevance */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-        <TypeBadge type={rec.type} />
-        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
-          Relevance: <strong>{rec.relevance_score}</strong>/100
-        </span>
-      </div>
-
-      {/* Description */}
-      <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569', lineHeight: 1.5 }}>
+      <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b', lineHeight: 1.4, flex: 1 }}>
         {rec.description}
       </p>
 
       {/* Tags */}
-      {rec.tags.filter(Boolean).length > 0 && (
+      {rec.tags && rec.tags.length > 0 && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-          {rec.tags.filter(Boolean).map((tag, i) => (
-            <span key={i} style={{
+          {rec.tags.filter(Boolean).slice(0, 4).map((t, idx) => (
+            <span key={idx} style={{
               background: '#f1f5f9',
-              color: '#64748b',
+              color: '#475569',
               fontSize: '0.68rem',
               padding: '2px 6px',
               borderRadius: '3px',
-              border: '1px solid #e2e8f0',
             }}>
-              {tag}
+              #{t}
             </span>
           ))}
         </div>
       )}
 
-      {/* Add button */}
+      {/* Action Button */}
       <button
-        onClick={onAdd}
-        disabled={added || adding}
+        className="btn"
         style={{
-          background: added ? '#059669' : adding ? '#93c5fd' : '#2563eb',
+          width: '100%',
+          marginTop: '4px',
+          background: added ? '#059669' : '#2563eb',
           color: '#fff',
-          border: 'none',
-          borderRadius: '6px',
-          padding: '8px 16px',
-          fontSize: '0.82rem',
+          fontSize: '0.8rem',
           fontWeight: 600,
-          cursor: added || adding ? 'not-allowed' : 'pointer',
+          cursor: added || adding ? 'default' : 'pointer',
+          padding: '7px 12px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '6px',
-          transition: 'background 0.2s',
         }}
+        onClick={() => !added && !adding && onAdd()}
+        disabled={added || adding}
       >
-        {added ? '✓ Added to Active Sources' : adding ? '⏳ Adding...' : '+ Add to Active Sources'}
+        {adding ? (
+          <>⏳ Adding...</>
+        ) : added ? (
+          <>✓ Actively Tracked</>
+        ) : (
+          <>+ Add to Active Sources</>
+        )}
       </button>
     </div>
   );
@@ -180,34 +148,36 @@ function RecommendedCard({
 // ─── Main Sources Component ───────────────────────────────────────────────────
 export function Sources() {
   const navigate = useNavigate();
-
-  // Existing state
   const [sources, setSources] = useState<Source[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingSource, setEditingSource] = useState<Source | null>(null);
+
+  // Per-source tender collection state
   const [collectingTenders, setCollectingTenders] = useState<string | null>(null);
   const [tenderResult, setTenderResult] = useState<Record<string, OpportunityCollectSummary | string>>({});
 
-  // Discovery state
-  const [selectedState, setSelectedState] = useState('');
-  const [selectedCity, setSelectedCity] = useState('');
-  const [discovering, setDiscovering] = useState(false);
-  const [recommended, setRecommended] = useState<RecommendedSource[] | null>(null);
-  const [discoverError, setDiscoverError] = useState<string | null>(null);
-  const [addedUrls, setAddedUrls] = useState<Set<string>>(new Set());
+  // Curated Recommended Sources
+  const [curatedSources, setCuratedSources] = useState<RecommendedSource[]>([]);
+  const [loadingCurated, setLoadingCurated] = useState(false);
+  const [curatedSearch, setCuratedSearch] = useState('');
+  const [selectedCuratedCategory, setSelectedCuratedCategory] = useState('All');
   const [addingUrl, setAddingUrl] = useState<string | null>(null);
+  const [addedUrls, setAddedUrls] = useState<Set<string>>(new Set());
 
-  const cities = selectedState ? getCitiesForState(selectedState) : [];
+  // Automated Crawler Scheduler Status
+  const [schedulerStatus, setSchedulerStatus] = useState<any>(null);
+  const [runningCheckNow, setRunningCheckNow] = useState(false);
+  const [schedulerNotice, setSchedulerNotice] = useState<string | null>(null);
+
+  // Set of tracked URLs
+  const trackedUrls = new Set(sources.map(s => s.url.replace(/\/$/, '')));
 
   useEffect(() => {
     loadSources();
+    loadCuratedSources();
+    loadSchedulerStatus();
   }, []);
-
-  // When state changes, reset city
-  useEffect(() => {
-    setSelectedCity('');
-  }, [selectedState]);
 
   const loadSources = async () => {
     setLoading(true);
@@ -218,6 +188,43 @@ export function Sources() {
       console.error('Failed to load sources', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadCuratedSources = async (category = 'All', search = '') => {
+    setLoadingCurated(true);
+    try {
+      const data = await api.getCuratedSources(category, search);
+      setCuratedSources(data || []);
+    } catch (err) {
+      console.error('Failed to load curated sources', err);
+    } finally {
+      setLoadingCurated(false);
+    }
+  };
+
+  const loadSchedulerStatus = async () => {
+    try {
+      const status = await api.getSchedulerStatus();
+      setSchedulerStatus(status);
+    } catch (err) {
+      console.warn('Could not fetch scheduler status', err);
+    }
+  };
+
+  const handleRunCheckNow = async () => {
+    setRunningCheckNow(true);
+    setSchedulerNotice(null);
+    try {
+      const res = await api.triggerSchedulerNow();
+      setSchedulerNotice(res.message);
+      await loadSchedulerStatus();
+      await loadSources();
+      setTimeout(() => setSchedulerNotice(null), 5000);
+    } catch (err: any) {
+      setSchedulerNotice(`Scheduler trigger failed: ${err.message}`);
+    } finally {
+      setRunningCheckNow(false);
     }
   };
 
@@ -245,6 +252,7 @@ export function Sources() {
     try {
       await api.updateSource(source._id, { is_active: !source.is_active });
       await loadSources();
+      await loadSchedulerStatus();
     } catch (_e) {
       alert('Failed to update source');
     }
@@ -258,6 +266,7 @@ export function Sources() {
     }
     setShowModal(false);
     await loadSources();
+    await loadSchedulerStatus();
   };
 
   const handleCollectTenders = async (sourceId: string) => {
@@ -267,6 +276,7 @@ export function Sources() {
       const summary: OpportunityCollectSummary = await api.collectOpportunities(sourceId);
       setTenderResult(prev => ({ ...prev, [sourceId]: summary }));
       await loadSources();
+      await loadSchedulerStatus();
     } catch (err: any) {
       setTenderResult(prev => ({
         ...prev,
@@ -274,22 +284,6 @@ export function Sources() {
       }));
     } finally {
       setCollectingTenders(null);
-    }
-  };
-
-  // ── Discovery Handlers ───────────────────────────────────────────────────
-  const handleDiscover = async () => {
-    if (!selectedState) return;
-    setDiscovering(true);
-    setDiscoverError(null);
-    setRecommended(null);
-    try {
-      const results = await api.discoverSources(selectedState, selectedCity || undefined);
-      setRecommended(results);
-    } catch (err: any) {
-      setDiscoverError(err.message || 'Discovery failed. Please try again.');
-    } finally {
-      setDiscovering(false);
     }
   };
 
@@ -309,6 +303,7 @@ export function Sources() {
       });
       setAddedUrls(prev => new Set([...prev, rec.url]));
       await loadSources();
+      await loadSchedulerStatus();
     } catch (err: any) {
       alert(`Failed to add source: ${err.message}`);
     } finally {
@@ -316,344 +311,368 @@ export function Sources() {
     }
   };
 
-  if (loading) return <div style={{ padding: '32px' }}>Loading sources...</div>;
+  const handleCuratedFilterChange = (cat: string) => {
+    setSelectedCuratedCategory(cat);
+    loadCuratedSources(cat, curatedSearch);
+  };
 
-  // Already-tracked URLs (to show "Already Tracked" badge)
-  const trackedUrls = new Set(sources.map(s => s.url));
+  const handleCuratedSearchChange = (val: string) => {
+    setCuratedSearch(val);
+    loadCuratedSources(selectedCuratedCategory, val);
+  };
+
+  const CATEGORY_TABS = [
+    'All',
+    'Government',
+    'PSU',
+    'Railways',
+    'Power',
+    'Healthcare'
+  ];
+
+  if (loading && sources.length === 0) {
+    return <div style={{ padding: '32px' }}>Loading sources...</div>;
+  }
 
   return (
-    <div>
+    <div style={{ maxWidth: '1400px', margin: '0 auto' }}>
       {/* ── Page Header ──────────────────────────────────────────────────────── */}
-      <div className="header-row">
+      <div className="header-row" style={{ marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h1 style={{ margin: 0 }}>Sources</h1>
+          <h1 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span>📡 Tracked Sources</span>
+          </h1>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '0.9rem' }}>
-            Manage tender portals. Click <strong>Collect Tenders</strong> to automatically discover and extract verified opportunities.
+            Manage active procurement portals and discover recommended sources for automated crawling.
           </p>
         </div>
-        <button className="btn" onClick={handleAddClick}>+ Add Manually</button>
+
+        <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+          <button
+            className="btn btn-secondary"
+            onClick={() => {
+              loadSources();
+              loadSchedulerStatus();
+            }}
+            style={{ fontSize: '0.85rem' }}
+          >
+            🔄 Refresh
+          </button>
+          <button className="btn btn-primary" onClick={handleAddClick}>
+            + Add Source
+          </button>
+        </div>
       </div>
 
-      {/* ── Location-Based Discovery Panel ───────────────────────────────────── */}
-      <div className="card" style={{ marginTop: '20px', border: '1px solid #bfdbfe', background: '#f0f9ff' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '16px' }}>
-          <span style={{ fontSize: '1.4rem' }}>🗺️</span>
+      {/* ── Automated Crawl Scheduler Banner ─────────────────────────────────── */}
+      <div className="card" style={{
+        background: '#f8fafc',
+        border: '1px solid #cbd5e1',
+        borderRadius: '10px',
+        padding: '14px 20px',
+        marginBottom: '24px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{
+            width: '10px',
+            height: '10px',
+            borderRadius: '50%',
+            background: schedulerStatus?.scheduler_running ? '#10b981' : '#f59e0b',
+            boxShadow: schedulerStatus?.scheduler_running ? '0 0 8px #10b981' : 'none'
+          }} />
           <div>
-            <h2 style={{ margin: 0, fontSize: '1.1rem', color: '#1e40af' }}>
-              Discover Sources by Location
-            </h2>
-            <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#3b82f6' }}>
-              Select your State & City to find all relevant government and private tender portals in your area.
-            </p>
+            <div style={{ fontSize: '0.9rem', fontWeight: 600, color: '#1e293b' }}>
+              Automated Background Crawler: {schedulerStatus?.scheduler_running ? 'Active & Running' : 'Enabled'}
+            </div>
+            <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+              Continuously crawls active sources based on their defined frequency (Hourly, 6-Hours, Daily, Weekly).
+              {schedulerStatus?.last_check_at && (
+                <> · Last system check: {new Date(schedulerStatus.last_check_at).toLocaleTimeString('en-IN')}</>
+              )}
+            </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-          {/* State Dropdown */}
-          <div style={{ flex: '1', minWidth: '200px' }}>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '6px', color: '#1e3a8a' }}>
-              State / Union Territory *
-            </label>
-            <select
-              className="form-control"
-              value={selectedState}
-              onChange={e => setSelectedState(e.target.value)}
-              style={{ width: '100%', borderColor: '#93c5fd' }}
-            >
-              <option value="">— Select State —</option>
-              {STATE_NAMES.map(s => (
-                <option key={s} value={s}>{s}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* City Dropdown */}
-          <div style={{ flex: '1', minWidth: '200px' }}>
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '6px', color: '#1e3a8a' }}>
-              City (optional)
-            </label>
-            <select
-              className="form-control"
-              value={selectedCity}
-              onChange={e => setSelectedCity(e.target.value)}
-              disabled={!selectedState}
-              style={{ width: '100%', borderColor: '#93c5fd', opacity: selectedState ? 1 : 0.5 }}
-            >
-              <option value="">All Cities</option>
-              {cities.slice(1).map(c => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Discover Button */}
-          <div>
-            <button
-              className="btn"
-              style={{
-                background: discovering ? '#93c5fd' : '#2563eb',
-                color: '#fff',
-                minWidth: '180px',
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                padding: '10px 20px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                cursor: !selectedState || discovering ? 'not-allowed' : 'pointer',
-                opacity: !selectedState ? 0.6 : 1,
-              }}
-              onClick={handleDiscover}
-              disabled={!selectedState || discovering}
-            >
-              {discovering ? (
-                <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>🔍</span> Searching...</>
-              ) : (
-                <>🔍 Discover Sources</>
-              )}
-            </button>
-            <style>{`@keyframes spin { from{transform:rotate(0)} to{transform:rotate(360deg)} }`}</style>
-          </div>
-        </div>
-
-        {/* Helper hint */}
-        {!selectedState && (
-          <p style={{ margin: '12px 0 0', fontSize: '0.78rem', color: '#60a5fa' }}>
-            💡 Select a state above to discover government portals, state e-procurement systems, PSU tenders, hospital procurement, construction sites and more — specific to your location.
-          </p>
-        )}
+        <button
+          className="btn btn-secondary"
+          style={{ fontSize: '0.8rem', padding: '6px 14px', background: '#fff' }}
+          onClick={handleRunCheckNow}
+          disabled={runningCheckNow}
+        >
+          {runningCheckNow ? '⏳ Checking Due Sources...' : '⚡ Check & Crawl Due Sources Now'}
+        </button>
       </div>
 
-      {/* ── Recommended Sources Panel ──────────────────────────────────────── */}
-      {(discovering || recommended !== null || discoverError) && (
-        <div style={{ marginTop: '24px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.15rem', color: '#1e293b' }}>
-                📡 Recommended Sources
-                {selectedState && (
-                  <span style={{ marginLeft: '8px', fontSize: '0.85rem', fontWeight: 400, color: '#64748b' }}>
-                    for <strong>{selectedCity && selectedCity !== 'All Cities' ? `${selectedCity}, ` : ''}{selectedState}</strong>
-                  </span>
-                )}
-              </h2>
-              {recommended && (
-                <p style={{ margin: '4px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                  {recommended.length} sources found — sorted by relevance. Click <strong>"+ Add to Active Sources"</strong> to start tracking.
-                </p>
-              )}
-            </div>
-            {recommended && (
-              <button
-                className="btn btn-secondary"
-                style={{ fontSize: '0.8rem', padding: '6px 12px' }}
-                onClick={() => { setRecommended(null); setDiscoverError(null); setAddedUrls(new Set()); }}
-              >
-                ✕ Clear Results
-              </button>
-            )}
-          </div>
-
-          {/* Error state */}
-          {discoverError && (
-            <div style={{ background: '#fef2f2', border: '1px solid #fca5a5', color: '#991b1b', padding: '14px 18px', borderRadius: '8px', fontSize: '0.875rem' }}>
-              ⚠️ {discoverError}
-            </div>
-          )}
-
-          {/* Shimmer loading */}
-          {discovering && (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
-              {Array.from({ length: 6 }).map((_, i) => <ShimmerCard key={i} />)}
-            </div>
-          )}
-
-          {/* Results grid */}
-          {!discovering && recommended && recommended.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px', color: '#64748b', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              <div style={{ fontSize: '2rem', marginBottom: '8px' }}>🔎</div>
-              <p style={{ margin: 0 }}>No additional sources found for this location beyond the national portals.</p>
-            </div>
-          )}
-
-          {!discovering && recommended && recommended.length > 0 && (
-            <>
-              {/* Already-tracked notice */}
-              {recommended.some(r => trackedUrls.has(r.url)) && (
-                <div style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534', padding: '10px 14px', borderRadius: '6px', marginBottom: '14px', fontSize: '0.8rem' }}>
-                  ✓ Some portals below are already in your Active Sources — they're highlighted in green.
-                </div>
-              )}
-
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '14px' }}>
-                {recommended.map((rec, idx) => {
-                  const alreadyTracked = trackedUrls.has(rec.url);
-                  const wasAdded = addedUrls.has(rec.url) || alreadyTracked;
-                  return (
-                    <div key={idx} style={{ position: 'relative' }}>
-                      {alreadyTracked && !addedUrls.has(rec.url) && (
-                        <div style={{
-                          position: 'absolute',
-                          top: 0, left: 0, right: 0, bottom: 0,
-                          borderRadius: '10px',
-                          background: 'rgba(240,253,244,0.85)',
-                          zIndex: 2,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          backdropFilter: 'blur(1px)',
-                        }}>
-                          <span style={{ background: '#059669', color: '#fff', padding: '6px 14px', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 700 }}>
-                            ✓ Already Tracked
-                          </span>
-                        </div>
-                      )}
-                      <RecommendedCard
-                        rec={rec}
-                        onAdd={() => handleAddRecommended(rec)}
-                        added={wasAdded}
-                        adding={addingUrl === rec.url}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+      {schedulerNotice && (
+        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', color: '#166534', padding: '10px 16px', borderRadius: '8px', marginBottom: '16px', fontSize: '0.85rem' }}>
+          {schedulerNotice}
         </div>
       )}
 
-      {/* ── Active Sources List ────────────────────────────────────────────── */}
-      <div style={{ marginTop: '28px' }}>
-        <h2 style={{ fontSize: '1.1rem', color: '#1e293b', margin: '0 0 14px' }}>
-          📋 Active Sources ({sources.length})
-        </h2>
+      {/* ── Section 1: Actively Tracked Sources ──────────────────────────────── */}
+      <div style={{ marginBottom: '40px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <h2 style={{ margin: 0, fontSize: '1.15rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>📋 Active Sources</span>
+            <span style={{ fontSize: '0.8rem', background: '#e2e8f0', color: '#475569', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+              {sources.length}
+            </span>
+          </h2>
+        </div>
 
-        <div className="card">
-          {sources.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '48px 24px' }}>
-              <p style={{ color: '#64748b', fontSize: '1.1rem', margin: '0 0 8px' }}>
-                No sources are being tracked yet.
-              </p>
-              <p style={{ color: '#94a3b8', marginBottom: '24px' }}>
-                Use "Discover Sources" above to find portals, or add one manually.
-              </p>
-              <button className="btn" onClick={handleAddClick}>+ Add Manually</button>
-            </div>
-          ) : (
-            <div>
-              {sources.map(source => {
-                const res = tenderResult[source._id];
-                const isCollecting = collectingTenders === source._id;
+        {sources.length === 0 ? (
+          <div className="card" style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
+            <p>No active sources yet. Add a custom portal above or pick from the Curated Recommended Sources below!</p>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {sources.map(source => {
+              const res = tenderResult[source._id];
+              const isCollecting = collectingTenders === source._id;
 
-                return (
-                  <div key={source._id} className="source-item">
-                    <div className="source-header">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                        <div className="source-title">{source.name}</div>
+              return (
+                <div
+                  key={source._id}
+                  className="card"
+                  style={{
+                    padding: '16px 20px',
+                    borderRadius: '10px',
+                    border: '1px solid #e2e8f0',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px'
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '12px' }}>
+                    <div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '4px', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 700, fontSize: '1rem', color: '#0f172a' }}>
+                          {source.name}
+                        </span>
                         <TypeBadge type={source.type} />
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: source.is_active ? '#dcfce7' : '#fee2e2',
+                          color: source.is_active ? '#166534' : '#991b1b',
+                        }}>
+                          {source.is_active ? 'Active' : 'Disabled'}
+                        </span>
+                        <span style={{
+                          fontSize: '0.72rem',
+                          fontWeight: 600,
+                          padding: '2px 8px',
+                          borderRadius: '4px',
+                          background: '#f1f5f9',
+                          color: '#475569',
+                        }}>
+                          ⏱ {source.crawl_frequency}
+                        </span>
                       </div>
-                      <div className="source-actions" style={{ gap: '8px', flexWrap: 'wrap' }}>
-                        <button
-                          className="btn"
-                          style={{
-                            backgroundColor: isCollecting ? '#9333ea' : '#059669',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            fontWeight: 600,
-                          }}
-                          onClick={() => handleCollectTenders(source._id)}
-                          disabled={isCollecting || !source.is_active}
-                          title={!source.is_active ? 'Source must be active to collect' : ''}
-                        >
-                          {isCollecting ? '⏳ Extracting Tenders…' : '📥 Collect Tenders'}
-                        </button>
 
-                        <button className="btn btn-secondary" onClick={() => handleEditClick(source)}>
-                          Edit
-                        </button>
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => handleToggleActive(source)}
-                        >
-                          {source.is_active ? 'Disable' : 'Enable'}
-                        </button>
-                        <button
-                          className="btn btn-danger"
-                          onClick={() => handleDelete(source._id)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="source-url">
-                      <a href={source.url} target="_blank" rel="noreferrer" style={{ color: '#2563eb' }}>
+                      <a
+                        href={source.url}
+                        target="_blank"
+                        rel="noreferrer"
+                        style={{ fontSize: '0.8rem', color: '#2563eb', textDecoration: 'none', wordBreak: 'break-all' }}
+                      >
                         {source.url}
                       </a>
                     </div>
 
-                    <div className="source-meta">
-                      <span><strong>Type:</strong> {source.type.replace(/_/g, ' ')}</span>
-                      <span>
-                        <strong>Status:</strong>{' '}
-                        <span className={`badge ${source.is_active ? 'active' : 'inactive'}`}>
-                          {source.is_active ? 'Active' : 'Inactive'}
-                        </span>
-                      </span>
-                      <span><strong>Frequency:</strong> {source.crawl_frequency.replace(/_/g, ' ')}</span>
-                      <span>
-                        <strong>Last Checked:</strong>{' '}
-                        {source.last_checked_at
-                          ? new Date(source.last_checked_at).toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' })
-                          : 'Never'}
-                      </span>
-                    </div>
-
-                    {/* Collect result feedback */}
-                    {res && (
-                      <div
+                    <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                      <button
+                        className="btn"
                         style={{
-                          marginTop: '12px',
-                          fontSize: '0.875rem',
-                          padding: '12px 16px',
-                          borderRadius: '6px',
-                          color: typeof res === 'string' && res.startsWith('Error') ? '#991b1b' : '#065f46',
-                          background: typeof res === 'string' && res.startsWith('Error') ? '#fef2f2' : '#ecfdf5',
-                          border: '1px solid ' + (typeof res === 'string' && res.startsWith('Error') ? '#fca5a5' : '#a7f3d0'),
+                          background: '#059669',
+                          color: '#fff',
+                          fontSize: '0.8rem',
+                          padding: '6px 14px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          cursor: isCollecting ? 'not-allowed' : 'pointer',
                         }}
+                        onClick={() => handleCollectTenders(source._id)}
+                        disabled={isCollecting || !source.is_active}
                       >
-                        {typeof res === 'string' ? (
-                          res
-                        ) : (
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-                            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                              <span><strong>✓ Discovered:</strong> {res.discovered}</span>
-                              <span><strong>Created:</strong> {res.created}</span>
-                              <span><strong>Updated:</strong> {res.updated}</span>
-                              <span><strong>Unchanged:</strong> {res.unchanged}</span>
-                              {res.failed > 0 && <span><strong>Failed:</strong> {res.failed}</span>}
-                            </div>
-                            <button
-                              className="btn btn-secondary"
-                              style={{ fontSize: '0.8rem', padding: '4px 10px' }}
-                              onClick={() => navigate('/opportunities')}
-                            >
-                              View Opportunities →
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                        {isCollecting ? '⏳ Fetching...' : '📥 Collect Tenders'}
+                      </button>
+
+                      <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                        onClick={() => handleEditClick(source)}
+                      >
+                        ✏️ Edit
+                      </button>
+
+                      <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.8rem', padding: '6px 12px' }}
+                        onClick={() => handleToggleActive(source)}
+                      >
+                        {source.is_active ? '⏸ Disable' : '▶ Enable'}
+                      </button>
+
+                      <button
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.8rem', padding: '6px 12px', color: '#dc2626' }}
+                        onClick={() => handleDelete(source._id)}
+                      >
+                        🗑 Delete
+                      </button>
+                    </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  {/* Metadata Row */}
+                  <div style={{ display: 'flex', gap: '20px', fontSize: '0.78rem', color: '#64748b', borderTop: '1px solid #f1f5f9', paddingTop: '8px', flexWrap: 'wrap' }}>
+                    <span>
+                      <strong>Last Crawled:</strong>{' '}
+                      {source.last_checked_at
+                        ? new Date(source.last_checked_at).toLocaleString('en-IN', {
+                            timeZone: 'Asia/Kolkata',
+                            dateStyle: 'medium',
+                            timeStyle: 'medium',
+                          })
+                        : 'Never'}
+                    </span>
+                    <span>
+                      <strong>Scheduled Crawl:</strong> Runs automatically every {source.crawl_frequency.toLowerCase().replace(/_/g, ' ')}
+                    </span>
+                  </div>
+
+                  {/* Result Banner after collection */}
+                  {res && (
+                    <div style={{
+                      marginTop: '4px',
+                      padding: '10px 14px',
+                      borderRadius: '6px',
+                      fontSize: '0.82rem',
+                      background: typeof res === 'string' && res.startsWith('Error') ? '#fef2f2' : '#f0fdf4',
+                      color: typeof res === 'string' && res.startsWith('Error') ? '#991b1b' : '#166534',
+                      border: `1px solid ${typeof res === 'string' && res.startsWith('Error') ? '#fca5a5' : '#86efac'}`,
+                    }}>
+                      {typeof res === 'string' ? (
+                        res
+                      ) : (
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+                          <span>
+                            ✓ Collection Complete: Discovered {res.discovered} tenders ({res.created} new, {res.updated} updated, {res.unchanged} unchanged).
+                          </span>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ fontSize: '0.75rem', padding: '3px 8px' }}
+                            onClick={() => navigate('/opportunities')}
+                          >
+                            View Opportunities →
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
+      {/* ── Section 2: Curated Recommended Sources ──────────────────────────── */}
+      <div>
+        <div style={{ marginBottom: '16px' }}>
+          <h2 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span>🌟 Curated Recommended Sources</span>
+            <span style={{ fontSize: '0.8rem', background: '#dbeafe', color: '#1e40af', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+              {curatedSources.length} Portals
+            </span>
+          </h2>
+          <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>
+            Verified government e-procurement portals, PSUs, and sector tender authorities ready to track with one click.
+          </p>
+        </div>
+
+        {/* Filter and Search Bar */}
+        <div className="card" style={{ padding: '14px 18px', marginBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          {/* Category Tabs */}
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {CATEGORY_TABS.map(tab => (
+              <button
+                key={tab}
+                type="button"
+                onClick={() => handleCuratedFilterChange(tab)}
+                style={{
+                  background: selectedCuratedCategory === tab ? '#2563eb' : '#f1f5f9',
+                  color: selectedCuratedCategory === tab ? '#fff' : '#475569',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '5px 12px',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Input */}
+          <div style={{ minWidth: '240px' }}>
+            <input
+              type="text"
+              className="form-control"
+              placeholder="Search portals (e.g. NTPC, AIIMS, Railway, UP...)"
+              value={curatedSearch}
+              onChange={(e) => handleCuratedSearchChange(e.target.value)}
+              style={{ fontSize: '0.82rem', padding: '6px 12px', width: '100%' }}
+            />
+          </div>
+        </div>
+
+        {/* Curated Portals Grid */}
+        {loadingCurated ? (
+          <div style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+            Loading recommended portals...
+          </div>
+        ) : curatedSources.length === 0 ? (
+          <div className="card" style={{ padding: '30px', textAlign: 'center', color: '#64748b' }}>
+            No portals matched your search criteria.
+          </div>
+        ) : (
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: '16px',
+          }}>
+            {curatedSources.map((rec, idx) => {
+              const cleanUrl = rec.url.replace(/\/$/, '');
+              const isAdded = trackedUrls.has(cleanUrl) || addedUrls.has(rec.url);
+              const isAdding = addingUrl === rec.url;
+
+              return (
+                <RecommendedCard
+                  key={idx}
+                  rec={rec}
+                  onAdd={() => handleAddRecommended(rec)}
+                  added={isAdded}
+                  adding={isAdding}
+                />
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Modal for adding/editing a source manually */}
       {showModal && (
         <SourceFormModal
           source={editingSource}
