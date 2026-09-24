@@ -293,3 +293,69 @@ export interface ExploreSearchResponse {
   StatusCode?: number;
   used_search_by?: number;
 }
+
+// ─── Scraped Tenders (Local Database) ──────────────────────────────────────────
+
+export interface ScrapedTenderDocument {
+  name: string;
+  url: string;
+  type?: string;
+}
+
+export interface ScrapedTender {
+  id: string;
+  _id: string;
+  source: string;
+  source_id: string;
+  title: string;
+  reference_no?: string | null;
+  organisation?: string | null;
+  department?: string | null;
+  category?: string | null;
+  tender_type?: string | null;
+  location?: string | null;
+  pincode?: string | null;
+  tender_value?: number | null;
+  emd_amount?: number | null;
+  tender_fee?: number | null;
+  publication_date?: string | null;
+  closing_date?: string | null;
+  opening_date?: string | null;
+  status: string;
+  description?: string | null;
+  source_url: string;
+  documents: ScrapedTenderDocument[];
+  inviting_authority_name?: string | null;
+  inviting_authority_address?: string | null;
+  detail_solved: boolean;
+  scraped_at: string;
+  updated_at: string;
+}
+
+export interface ScrapedTendersResponse {
+  items: ScrapedTender[];
+  total: number;
+  page: number;
+  limit: number;
+  total_pages: number;
+}
+
+export interface ScraperStats {
+  total_tenders: number;
+  by_source: Record<string, number>;
+  by_status: Record<string, number>;
+  recent_runs: {
+    source: string;
+    started_at: string;
+    completed_at?: string;
+    pages_requested: number;
+    tenders_found: number;
+    new_tenders: number;
+    updated_tenders: number;
+    failed_tenders: number;
+    duration_seconds: number;
+    status: string;
+    error_message?: string;
+  }[];
+}
+

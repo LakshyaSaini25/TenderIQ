@@ -1,4 +1,4 @@
-import { Source, SourceCreate, SourceUpdate, Category, AIProcessResult, AIHealthResult, RecommendedSource, ExploreAISearchResponse, ExploreSearchResponse, ExploreSearchPayload } from '../types';
+import { Source, SourceCreate, SourceUpdate, Category, AIProcessResult, AIHealthResult, RecommendedSource, ExploreAISearchResponse, ExploreSearchResponse, ExploreSearchPayload, ScrapedTender, ScrapedTendersResponse, ScraperStats } from '../types';
 
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
@@ -231,6 +231,38 @@ class ApiService {
     return this.request<{ success: boolean; message: string; opportunity_id?: string }>('/explore/import', {
       method: 'POST',
       body: JSON.stringify({ tender }),
+    });
+  }
+
+  // Scraped Tenders (Local Database & Scraper Control)
+  getScrapedTenders(params: Record<string, any> = {}) {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.append(key, String(value));
+      }
+    });
+    const qs = query.toString();
+    return this.request<ScrapedTendersResponse>(`/scrapers/tenders${qs ? `?${qs}` : ''}`);
+  }
+
+  getScrapedTender(id: string) {
+    return this.request<ScrapedTender>(`/scrapers/tenders/${id}`);
+  }
+
+  getScraperStats() {
+    return this.request<ScraperStats>('/scrapers/stats');
+  }
+
+  triggerScraper(source: string, maxPages: number = 1, enrichDetails: boolean = true) {
+    return this.request<{
+      message: string;
+      source: string;
+      max_pages: number;
+      enrich_details: boolean;
+      status: string;
+    }>(`/scrapers/run/${source}?max_pages=${maxPages}&enrich_details=${enrichDetails}&async_mode=true`, {
+      method: 'POST',
     });
   }
 }

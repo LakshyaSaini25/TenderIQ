@@ -23,6 +23,12 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <span style={{ fontSize: '0.65rem', background: '#3b82f6', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>AI</span>
               </span>
             </NavLink>
+            <NavLink to="/scraped-tenders" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                Tender Scraper
+                <span style={{ fontSize: '0.65rem', background: '#10b981', color: '#fff', padding: '1px 5px', borderRadius: '4px', fontWeight: 600 }}>LIVE DB</span>
+              </span>
+            </NavLink>
             <NavLink to="/opportunities" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Opportunities</NavLink>
             <NavLink to="/sources" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Sources</NavLink>
             <NavLink to="/content" className={({isActive}) => isActive ? 'nav-link active' : 'nav-link'}>Content</NavLink>
