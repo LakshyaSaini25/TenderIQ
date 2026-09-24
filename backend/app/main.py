@@ -12,6 +12,7 @@ from app.repositories.opportunity_repository import OpportunityRepository
 from app.repositories.category_repository import CategoryRepository
 from app.repositories.location_repository import LocationRepository
 from app.repositories.ai_log_repository import AILogRepository
+from app.repositories.scraped_tender_repository import ScrapedTenderRepository
 
 import asyncio
 from app.services.crawl_scheduler import get_crawl_scheduler
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
     await CrawlLogRepository().create_indexes()
     await OpportunityRepository().create_indexes()
     await AILogRepository().create_indexes()
+    await ScrapedTenderRepository().create_indexes()
     await CategoryRepository().seed_if_empty()
     await LocationRepository().seed_if_empty()
     logger.info("MongoDB indexes verified/created & initial data seeded.")
