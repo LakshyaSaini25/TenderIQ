@@ -68,8 +68,8 @@ class TenderFilterParams(BaseModel):
     date_to: Optional[datetime] = None
     page: int = Field(1, ge=1)
     limit: int = Field(20, ge=1, le=100)
-    sort_by: str = Field("closing_date", description="closing_date, publication_date, tender_value, scraped_at")
-    sort_order: int = Field(1, description="1 for ASC (e.g. earliest closing first), -1 for DESC")
+    sort_by: str = Field("scraped_at", description="scraped_at, closing_date, publication_date, tender_value")
+    sort_order: int = Field(-1, description="1 for ASC, -1 for DESC (newest first)")
 
 
 class ScraperRunStats(BaseModel):
