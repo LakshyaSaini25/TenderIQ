@@ -29,6 +29,181 @@ function formatDate(dateStr?: string | null): string {
   }
 }
 
+interface DeadlineUrgency {
+  isClosed: boolean;
+  statusText: string;
+  cardBg: string;
+  cardBorder: string;
+  accentBorderLeft: string;
+  badgeBg: string;
+  badgeColor: string;
+  badgeBorder: string;
+  badgeText: string;
+  statusBg: string;
+  statusColor: string;
+  metaBg: string;
+  metaBorder: string;
+  deadlineColor: string;
+  timeRemainingText: string;
+}
+
+function getDeadlineUrgency(closingDateStr?: string | null, rawStatus?: string | null): DeadlineUrgency {
+  if (!closingDateStr) {
+    const isClosed = rawStatus?.toUpperCase() === 'CLOSED';
+    return {
+      isClosed,
+      statusText: isClosed ? 'CLOSED' : 'OPEN',
+      cardBg: isClosed ? '#f1f5f9' : '#ffffff',
+      cardBorder: isClosed ? '#cbd5e1' : '#e2e8f0',
+      accentBorderLeft: isClosed ? '6px solid #64748b' : '6px solid #94a3b8',
+      badgeBg: '#f1f5f9',
+      badgeColor: '#475569',
+      badgeBorder: '#cbd5e1',
+      badgeText: isClosed ? '🔒 Closed' : '📅 No Deadline',
+      statusBg: isClosed ? '#e2e8f0' : '#dcfce7',
+      statusColor: isClosed ? '#475569' : '#15803d',
+      metaBg: isClosed ? '#e2e8f0' : '#f8fafc',
+      metaBorder: isClosed ? '#cbd5e1' : '#e2e8f0',
+      deadlineColor: '#64748b',
+      timeRemainingText: isClosed ? 'Tender Closed' : 'No deadline specified',
+    };
+  }
+
+  const closingDate = new Date(closingDateStr);
+  if (isNaN(closingDate.getTime())) {
+    return {
+      isClosed: false,
+      statusText: 'OPEN',
+      cardBg: '#ffffff',
+      cardBorder: '#e2e8f0',
+      accentBorderLeft: '6px solid #94a3b8',
+      badgeBg: '#f1f5f9',
+      badgeColor: '#475569',
+      badgeBorder: '#cbd5e1',
+      badgeText: '📅 Date Pending',
+      statusBg: '#dcfce7',
+      statusColor: '#15803d',
+      metaBg: '#f8fafc',
+      metaBorder: '#e2e8f0',
+      deadlineColor: '#64748b',
+      timeRemainingText: 'Date pending',
+    };
+  }
+
+  const now = new Date();
+  const diffMs = closingDate.getTime() - now.getTime();
+
+  // Expired / past deadline -> Mark as CLOSED status with dull grey box and high-contrast visible text
+  if (diffMs <= 0 || rawStatus?.toUpperCase() === 'CLOSED') {
+    return {
+      isClosed: true,
+      statusText: 'CLOSED',
+      cardBg: '#f1f5f9', // Slate dull grey
+      cardBorder: '#cbd5e1',
+      accentBorderLeft: '6px solid #64748b',
+      badgeBg: '#e2e8f0',
+      badgeColor: '#334155',
+      badgeBorder: '#94a3b8',
+      badgeText: '🔒 Closed / Expired',
+      statusBg: '#e2e8f0',
+      statusColor: '#475569',
+      metaBg: '#e2e8f0',
+      metaBorder: '#cbd5e1',
+      deadlineColor: '#64748b',
+      timeRemainingText: 'Expired (Tender Closed)',
+    };
+  }
+
+  const diffHours = diffMs / (1000 * 60 * 60);
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  // Last day of closing (<= 24 hours left, or <= 1 day) -> RED
+  if (diffDays <= 1 || diffHours <= 24) {
+    const hours = Math.max(1, Math.round(diffHours));
+    return {
+      isClosed: false,
+      statusText: 'OPEN',
+      cardBg: '#fff1f2', // Soft pastel red
+      cardBorder: '#fecdd3',
+      accentBorderLeft: '6px solid #e11d48',
+      badgeBg: '#fee2e2',
+      badgeColor: '#9f1239',
+      badgeBorder: '#fca5a5',
+      badgeText: `🔥 Last Day (${hours}h left)`,
+      statusBg: '#fee2e2',
+      statusColor: '#b91c1c',
+      metaBg: '#ffe4e6',
+      metaBorder: '#fecdd3',
+      deadlineColor: '#b91c1c',
+      timeRemainingText: `Last day to submit (${hours} hrs left)`,
+    };
+  }
+
+  // Only 3 days left (<= 3 days) -> ORANGE
+  if (diffDays <= 3) {
+    const days = Math.max(1, Math.ceil(diffDays));
+    return {
+      isClosed: false,
+      statusText: 'OPEN',
+      cardBg: '#fff7ed', // Soft pastel orange
+      cardBorder: '#fed7aa',
+      accentBorderLeft: '6px solid #ea580c',
+      badgeBg: '#ffedd5',
+      badgeColor: '#9a3412',
+      badgeBorder: '#fdba74',
+      badgeText: `⚠️ ${days} Days Left`,
+      statusBg: '#ffedd5',
+      statusColor: '#c2410c',
+      metaBg: '#ffedd5',
+      metaBorder: '#fed7aa',
+      deadlineColor: '#ea580c',
+      timeRemainingText: `${days} days left`,
+    };
+  }
+
+  // 3 to 5 days left -> AMBER
+  if (diffDays <= 5) {
+    const days = Math.ceil(diffDays);
+    return {
+      isClosed: false,
+      statusText: 'OPEN',
+      cardBg: '#fefce8', // Soft pastel amber
+      cardBorder: '#fef08a',
+      accentBorderLeft: '6px solid #eab308',
+      badgeBg: '#fef3c7',
+      badgeColor: '#92400e',
+      badgeBorder: '#fcd34d',
+      badgeText: `⏳ ${days} Days Left`,
+      statusBg: '#fef3c7',
+      statusColor: '#b45309',
+      metaBg: '#fef9c3',
+      metaBorder: '#fef08a',
+      deadlineColor: '#d97706',
+      timeRemainingText: `${days} days left`,
+    };
+  }
+
+  // More than 5 days to close -> GREEN
+  const days = Math.ceil(diffDays);
+  return {
+    isClosed: false,
+    statusText: 'OPEN',
+    cardBg: '#f0fdf4', // Soft pastel green
+    cardBorder: '#bbf7d0',
+    accentBorderLeft: '6px solid #16a34a',
+    badgeBg: '#dcfce7',
+    badgeColor: '#166534',
+    badgeBorder: '#86efac',
+    badgeText: `🟢 ${days} Days Left`,
+    statusBg: '#dcfce7',
+    statusColor: '#15803d',
+    metaBg: '#dcfce7',
+    metaBorder: '#bbf7d0',
+    deadlineColor: '#16a34a',
+    timeRemainingText: `${days} days left`,
+  };
+}
+
 const CATEGORY_OPTIONS = [
   'ALL',
   'Works',
@@ -58,7 +233,7 @@ export function TenderScraper() {
   const [state, setState] = useState('');
   const [minValue, setMinValue] = useState<string>('');
   const [maxValue, setMaxValue] = useState<string>('');
-  const [sortBy, setSortBy] = useState('closing_date');
+  const [sortBy, setSortBy] = useState('scraped_at');
   const [page, setPage] = useState(1);
   const [limit] = useState(15);
 
@@ -87,6 +262,7 @@ export function TenderScraper() {
         page: targetPage,
         limit,
         sort_by: sortBy,
+        // closing_date: ASC = soonest deadline first; all others: DESC = newest/highest first
         sort_order: sortBy === 'closing_date' ? 1 : -1,
       };
 
@@ -128,7 +304,7 @@ export function TenderScraper() {
     setState('');
     setMinValue('');
     setMaxValue('');
-    setSortBy('closing_date');
+    setSortBy('scraped_at');
     setPage(1);
     setTimeout(() => loadTenders(1), 50);
   };
@@ -151,6 +327,8 @@ export function TenderScraper() {
       setRunningScraper(false);
     }
   };
+
+  const modalUrgency = selectedTender ? getDeadlineUrgency(selectedTender.closing_date, selectedTender.status) : null;
 
   return (
     <div style={{ padding: '24px', maxWidth: '1440px', margin: '0 auto', color: '#1e293b' }}>
@@ -387,10 +565,10 @@ export function TenderScraper() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>MIN VALUE (₹)</label>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: '#64748b', marginBottom: '4px' }}>MIN EMD / VALUE (₹)</label>
               <input
                 type="number"
-                placeholder="Min ₹"
+                placeholder="Min ₹ (EMD or Est. Value)"
                 value={minValue}
                 onChange={e => setMinValue(e.target.value)}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem', boxSizing: 'border-box' }}
@@ -404,10 +582,10 @@ export function TenderScraper() {
                 onChange={e => { setSortBy(e.target.value); setPage(1); }}
                 style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.85rem' }}
               >
-                <option value="closing_date">Closing Date (Earliest)</option>
-                <option value="publication_date">Publication Date (Newest)</option>
-                <option value="tender_value">Tender Value (Highest)</option>
-                <option value="scraped_at">Recently Scraped</option>
+                <option value="scraped_at">🕐 Recently Scraped (Default)</option>
+                <option value="closing_date">⏰ Closing Date — Active Only (Soonest First)</option>
+                <option value="tender_value">💰 Tender Value (Highest First)</option>
+                <option value="publication_date">📅 Publication Date (Newest First)</option>
               </select>
             </div>
           </div>
@@ -452,165 +630,225 @@ export function TenderScraper() {
         </div>
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          {tenders.map(t => (
-            <div
-              key={t.id || t._id}
-              style={{
-                background: '#fff',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                padding: '20px',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
-                transition: 'border-color 0.2s',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  {/* Source Badge */}
-                  <span style={{
-                    background: '#ede9fe',
-                    color: '#6d28d9',
-                    fontSize: '0.75rem',
-                    fontWeight: 700,
-                    padding: '3px 8px',
-                    borderRadius: '4px'
-                  }}>
-                    {t.source}
-                  </span>
+          {/* Urgency Legend Strip */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            background: '#ffffff',
+            padding: '12px 18px',
+            borderRadius: '8px',
+            border: '1px solid #e2e8f0',
+            fontSize: '0.8rem',
+            color: '#475569',
+            flexWrap: 'wrap',
+            gap: '12px',
+            boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+          }}>
+            <div style={{ fontWeight: 700, color: '#1e293b' }}>
+              📊 Showing {total} Tender{total === 1 ? '' : 's'} in Database
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#16a34a', display: 'inline-block' }}></span>
+                <span style={{ fontWeight: 500, color: '#15803d' }}>&gt; 5 Days Left (Active)</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#ea580c', display: 'inline-block' }}></span>
+                <span style={{ fontWeight: 500, color: '#c2410c' }}>≤ 3 Days Left (Urgent)</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#e11d48', display: 'inline-block' }}></span>
+                <span style={{ fontWeight: 500, color: '#b91c1c' }}>Last Day (Closing)</span>
+              </span>
+              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ width: '10px', height: '10px', borderRadius: '50%', background: '#64748b', display: 'inline-block' }}></span>
+                <span style={{ fontWeight: 500, color: '#475569' }}>Expired (Closed)</span>
+              </span>
+            </div>
+          </div>
 
-                  {/* Category Badge */}
-                  {t.category && (
+          {tenders.map(t => {
+            const urgency = getDeadlineUrgency(t.closing_date, t.status);
+            return (
+              <div
+                key={t.id || t._id}
+                style={{
+                  background: urgency.cardBg,
+                  borderRadius: '10px',
+                  border: `1px solid ${urgency.cardBorder}`,
+                  borderLeft: urgency.accentBorderLeft,
+                  padding: '20px',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
+                  transition: 'all 0.2s ease',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    {/* Source Badge */}
                     <span style={{
-                      background: '#f1f5f9',
-                      color: '#475569',
+                      background: '#ede9fe',
+                      color: '#6d28d9',
                       fontSize: '0.75rem',
-                      fontWeight: 600,
+                      fontWeight: 700,
                       padding: '3px 8px',
                       borderRadius: '4px'
                     }}>
-                      {t.category}
+                      {t.source}
                     </span>
-                  )}
 
-                  {/* Status Badge */}
-                  <span style={{
-                    background: t.status === 'OPEN' ? '#dcfce7' : '#f1f5f9',
-                    color: t.status === 'OPEN' ? '#15803d' : '#64748b',
-                    fontSize: '0.75rem',
-                    fontWeight: 600,
-                    padding: '3px 8px',
-                    borderRadius: '4px'
-                  }}>
-                    {t.status}
-                  </span>
+                    {/* Category Badge */}
+                    {t.category && (
+                      <span style={{
+                        background: '#f1f5f9',
+                        color: '#475569',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        padding: '3px 8px',
+                        borderRadius: '4px'
+                      }}>
+                        {t.category}
+                      </span>
+                    )}
 
-                  {/* Detail Solved Badge */}
-                  {t.detail_solved && (
+                    {/* Dynamic Status Badge */}
                     <span style={{
-                      background: '#e0f2fe',
-                      color: '#0369a1',
-                      fontSize: '0.7rem',
-                      fontWeight: 600,
-                      padding: '2px 6px',
-                      borderRadius: '4px'
+                      background: urgency.statusBg,
+                      color: urgency.statusColor,
+                      fontSize: '0.75rem',
+                      fontWeight: 700,
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      letterSpacing: '0.5px'
                     }}>
-                      ⚡ Details Enriched
+                      {urgency.statusText}
                     </span>
+
+                    {/* Deadline Urgency Pill */}
+                    <span style={{
+                      background: urgency.badgeBg,
+                      color: urgency.badgeColor,
+                      border: `1px solid ${urgency.badgeBorder}`,
+                      fontSize: '0.75rem',
+                      fontWeight: 600,
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px'
+                    }}>
+                      {urgency.badgeText}
+                    </span>
+
+                    {/* Detail Solved Badge */}
+                    {t.detail_solved && (
+                      <span style={{
+                        background: '#e0f2fe',
+                        color: '#0369a1',
+                        fontSize: '0.7rem',
+                        fontWeight: 600,
+                        padding: '2px 6px',
+                        borderRadius: '4px'
+                      }}>
+                        ⚡ Details Enriched
+                      </span>
+                    )}
+                  </div>
+
+                  {/* EMD Value Outside on Tile */}
+                  <div style={{ textAlign: 'right' }}>
+                    <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>EMD AMOUNT</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
+                      {formatIndianCurrency(t.emd_amount)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Title */}
+                <h3 style={{
+                  fontSize: '1.05rem',
+                  fontWeight: 600,
+                  margin: '12px 0 6px',
+                  color: '#0f172a',
+                  lineHeight: 1.4
+                }}>
+                  {t.title}
+                </h3>
+
+                {/* Organisation & Department */}
+                <div style={{ fontSize: '0.875rem', color: '#334155', marginBottom: '12px' }}>
+                  🏢 <strong>{t.organisation || 'Organisation Not Specified'}</strong>
+                  {t.department && <span style={{ color: '#475569' }}> • {t.department}</span>}
+                  {t.location && <span style={{ color: '#475569' }}> • 📍 {t.location}</span>}
+                </div>
+
+                {/* Reference & Key Metadata */}
+                <div style={{
+                  display: 'flex',
+                  gap: '20px',
+                  fontSize: '0.8rem',
+                  color: '#334155',
+                  background: urgency.metaBg,
+                  border: `1px solid ${urgency.metaBorder}`,
+                  padding: '10px 14px',
+                  borderRadius: '6px',
+                  flexWrap: 'wrap',
+                  marginBottom: '14px'
+                }}>
+                  <div>
+                    <span style={{ fontWeight: 600, color: '#475569' }}>Ref No: </span>
+                    <span style={{ color: '#0f172a', fontWeight: 500 }}>{t.reference_no || t.source_id}</span>
+                  </div>
+                  {t.tender_value && (
+                    <div>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>Est. Value: </span>
+                      <span style={{ color: '#0f172a', fontWeight: 500 }}>{formatIndianCurrency(t.tender_value)}</span>
+                    </div>
+                  )}
+                  {t.closing_date && (
+                    <div>
+                      <span style={{ fontWeight: 600, color: urgency.deadlineColor }}>Deadline: </span>
+                      <span style={{ color: '#0f172a', fontWeight: 600 }}>{formatDate(t.closing_date)}</span>
+                      <span style={{ marginLeft: '6px', fontSize: '0.75rem', fontWeight: 700, color: urgency.deadlineColor }}>
+                        ({urgency.timeRemainingText})
+                      </span>
+                    </div>
+                  )}
+                  {t.opening_date && (
+                    <div>
+                      <span style={{ fontWeight: 600, color: '#475569' }}>Opening: </span>
+                      <span style={{ color: '#0f172a', fontWeight: 500 }}>{formatDate(t.opening_date)}</span>
+                    </div>
+                  )}
+                  {t.documents && t.documents.length > 0 && (
+                    <div>
+                      <span style={{ fontWeight: 600, color: '#2563eb' }}>📄 Docs: </span>
+                      <span style={{ color: '#0f172a', fontWeight: 500 }}>{t.documents.length} File(s)</span>
+                    </div>
                   )}
                 </div>
 
-                {/* Estimated Value */}
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>ESTIMATED VALUE</div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a' }}>
-                    {formatIndianCurrency(t.tender_value)}
-                  </div>
+                {/* Actions */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+                  <button
+                    onClick={() => setSelectedTender(t)}
+                    style={{
+                      padding: '7px 16px',
+                      background: '#0f172a',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '5px',
+                      fontSize: '0.85rem',
+                      fontWeight: 600,
+                      cursor: 'pointer'
+                    }}
+                  >
+                    View Full Details
+                  </button>
                 </div>
               </div>
-
-              {/* Title */}
-              <h3 style={{ fontSize: '1.05rem', fontWeight: 600, margin: '12px 0 6px', color: '#0f172a', lineHeight: 1.4 }}>
-                {t.title}
-              </h3>
-
-              {/* Organisation & Department */}
-              <div style={{ fontSize: '0.875rem', color: '#475569', marginBottom: '12px' }}>
-                🏢 <strong>{t.organisation || 'Organisation Not Specified'}</strong>
-                {t.department && <span style={{ color: '#64748b' }}> • {t.department}</span>}
-                {t.location && <span style={{ color: '#64748b' }}> • 📍 {t.location}</span>}
-              </div>
-
-              {/* Reference & Key Metadata */}
-              <div style={{
-                display: 'flex',
-                gap: '20px',
-                fontSize: '0.8rem',
-                color: '#64748b',
-                background: '#f8fafc',
-                padding: '10px 14px',
-                borderRadius: '6px',
-                flexWrap: 'wrap',
-                marginBottom: '14px'
-              }}>
-                <div>
-                  <span style={{ fontWeight: 600, color: '#475569' }}>Ref No: </span>
-                  {t.reference_no || t.source_id}
-                </div>
-                {t.closing_date && (
-                  <div>
-                    <span style={{ fontWeight: 600, color: '#b91c1c' }}>Deadline: </span>
-                    {formatDate(t.closing_date)}
-                  </div>
-                )}
-                {t.opening_date && (
-                  <div>
-                    <span style={{ fontWeight: 600, color: '#475569' }}>Opening: </span>
-                    {formatDate(t.opening_date)}
-                  </div>
-                )}
-                {t.emd_amount && (
-                  <div>
-                    <span style={{ fontWeight: 600, color: '#475569' }}>EMD: </span>
-                    {formatIndianCurrency(t.emd_amount)}
-                  </div>
-                )}
-                {t.documents && t.documents.length > 0 && (
-                  <div>
-                    <span style={{ fontWeight: 600, color: '#2563eb' }}>📄 Docs: </span>
-                    {t.documents.length} File(s)
-                  </div>
-                )}
-              </div>
-
-              {/* Actions */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <a
-                  href={t.source_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ fontSize: '0.85rem', color: '#2563eb', textDecoration: 'none', fontWeight: 500 }}
-                >
-                  🔗 View on Portal ↗
-                </a>
-
-                <button
-                  onClick={() => setSelectedTender(t)}
-                  style={{
-                    padding: '6px 14px',
-                    background: '#0f172a',
-                    color: '#fff',
-                    border: 'none',
-                    borderRadius: '5px',
-                    fontSize: '0.85rem',
-                    fontWeight: 600,
-                    cursor: 'pointer'
-                  }}
-                >
-                  View Full Details
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
 
           {/* ── Pagination ── */}
           <div style={{
@@ -711,16 +949,45 @@ export function TenderScraper() {
               ✕
             </button>
 
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap' }}>
               <span style={{ background: '#ede9fe', color: '#6d28d9', fontSize: '0.8rem', fontWeight: 700, padding: '3px 8px', borderRadius: '4px' }}>
                 {selectedTender.source}
               </span>
-              <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.8rem', fontWeight: 600, padding: '3px 8px', borderRadius: '4px' }}>
-                {selectedTender.category || 'General'}
-              </span>
-              <span style={{ background: selectedTender.status === 'OPEN' ? '#dcfce7' : '#f1f5f9', color: selectedTender.status === 'OPEN' ? '#15803d' : '#64748b', fontSize: '0.8rem', fontWeight: 600, padding: '3px 8px', borderRadius: '4px' }}>
-                {selectedTender.status}
-              </span>
+              {selectedTender.category && (
+                <span style={{ background: '#f1f5f9', color: '#475569', fontSize: '0.8rem', fontWeight: 600, padding: '3px 8px', borderRadius: '4px' }}>
+                  {selectedTender.category}
+                </span>
+              )}
+              {modalUrgency ? (
+                <>
+                  <span style={{
+                    background: modalUrgency.statusBg,
+                    color: modalUrgency.statusColor,
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    letterSpacing: '0.5px'
+                  }}>
+                    {modalUrgency.statusText}
+                  </span>
+                  <span style={{
+                    background: modalUrgency.badgeBg,
+                    color: modalUrgency.badgeColor,
+                    border: `1px solid ${modalUrgency.badgeBorder}`,
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: '4px'
+                  }}>
+                    {modalUrgency.badgeText}
+                  </span>
+                </>
+              ) : (
+                <span style={{ background: selectedTender.status === 'OPEN' ? '#dcfce7' : '#f1f5f9', color: selectedTender.status === 'OPEN' ? '#15803d' : '#64748b', fontSize: '0.8rem', fontWeight: 600, padding: '3px 8px', borderRadius: '4px' }}>
+                  {selectedTender.status}
+                </span>
+              )}
             </div>
 
             <h2 style={{ fontSize: '1.3rem', fontWeight: 700, margin: '0 0 12px', lineHeight: 1.4, color: '#0f172a' }}>
@@ -772,9 +1039,14 @@ export function TenderScraper() {
 
               <div>
                 <div style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: 600 }}>BID SUBMISSION CLOSING</div>
-                <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#b91c1c' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: modalUrgency?.deadlineColor || '#b91c1c' }}>
                   {formatDate(selectedTender.closing_date)}
                 </div>
+                {modalUrgency && (
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: modalUrgency.deadlineColor, marginTop: '2px' }}>
+                    {modalUrgency.timeRemainingText}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -835,25 +1107,36 @@ export function TenderScraper() {
                   {selectedTender.documents.map((doc, idx) => (
                     <a
                       key={idx}
-                      href={doc.url}
+                      href={api.getScrapedTenderDocumentDownloadUrl(selectedTender.id || selectedTender._id, idx)}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       style={{
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'space-between',
-                        padding: '10px 14px',
+                        padding: '12px 16px',
                         background: '#f8fafc',
-                        border: '1px solid #e2e8f0',
+                        border: '1px solid #cbd5e1',
                         borderRadius: '6px',
                         textDecoration: 'none',
-                        color: '#2563eb',
-                        fontSize: '0.85rem',
+                        color: '#1e293b',
+                        fontSize: '0.875rem',
                         fontWeight: 500
                       }}
+                      title="Opens official portal document page via TenderMate's authenticated session (bypasses Unauthorized error)"
                     >
-                      <span>📄 {doc.name}</span>
-                      <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Download ↗</span>
+                      <span style={{ wordBreak: 'break-all', flex: 1, marginRight: '12px' }}>📄 {doc.name}</span>
+                      <span style={{
+                        fontSize: '0.75rem',
+                        background: '#059669',
+                        color: '#fff',
+                        padding: '5px 12px',
+                        borderRadius: '4px',
+                        fontWeight: 600,
+                        whiteSpace: 'nowrap'
+                      }}>
+                        👁️ View / Download Document
+                      </span>
                     </a>
                   ))}
                 </div>
@@ -862,32 +1145,16 @@ export function TenderScraper() {
 
             {/* Footer Buttons */}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
-              <a
-                href={selectedTender.source_url}
-                target="_blank"
-                rel="noreferrer"
-                style={{
-                  padding: '9px 18px',
-                  background: '#2563eb',
-                  color: '#fff',
-                  borderRadius: '6px',
-                  textDecoration: 'none',
-                  fontWeight: 600,
-                  fontSize: '0.875rem'
-                }}
-              >
-                Open Official Portal ↗
-              </a>
               <button
                 onClick={() => setSelectedTender(null)}
                 style={{
-                  padding: '9px 16px',
-                  background: '#f1f5f9',
-                  color: '#475569',
-                  border: '1px solid #cbd5e1',
+                  padding: '9px 20px',
+                  background: '#0f172a',
+                  color: '#fff',
+                  border: 'none',
                   borderRadius: '6px',
                   cursor: 'pointer',
-                  fontWeight: 500,
+                  fontWeight: 600,
                   fontSize: '0.875rem'
                 }}
               >

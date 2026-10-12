@@ -265,6 +265,10 @@ class ApiService {
       method: 'POST',
     });
   }
+
+  getScrapedTenderDocumentDownloadUrl(tenderId: string, docIndex: number) {
+    return `${API_BASE_URL}/scrapers/tenders/${tenderId}/documents/${docIndex}/download`;
+  }
 }
 
 export const api = new ApiService();

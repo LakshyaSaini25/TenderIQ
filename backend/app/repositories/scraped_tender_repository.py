@@ -44,6 +44,7 @@ class ScrapedTenderRepository:
         await self.collection.create_index([("closing_date", pymongo.ASCENDING)])
         await self.collection.create_index([("publication_date", pymongo.DESCENDING)])
         await self.collection.create_index([("tender_value", pymongo.DESCENDING)])
+        await self.collection.create_index([("emd_amount", pymongo.DESCENDING)])
         await self.collection.create_index([("scraped_at", pymongo.DESCENDING)])
 
     async def upsert_tender(self, tender: TenderSchema) -> Tuple[bool, str]:
@@ -94,48 +95,75 @@ class ScrapedTenderRepository:
         """
         Executes multi-criteria query and returns paginated results.
         """
-        query: Dict[str, Any] = {}
+        and_clauses: List[Dict[str, Any]] = []
 
         # 1. Text/Keyword search across title, description, reference_no, organisation
         if params.keyword and params.keyword.strip():
             kw = re.escape(params.keyword.strip())
             pattern = {"$regex": kw, "$options": "i"}
-            query["$or"] = [
-                {"title": pattern},
-                {"description": pattern},
-                {"reference_no": pattern},
-                {"organisation": pattern},
-                {"location": pattern}
-            ]
+            and_clauses.append({
+                "$or": [
+                    {"title": pattern},
+                    {"description": pattern},
+                    {"reference_no": pattern},
+                    {"organisation": pattern},
+                    {"location": pattern}
+                ]
+            })
 
         # 2. Source filter (e.g. CPPP, GeM)
         if params.source and params.source.strip() and params.source != "ALL":
-            query["source"] = params.source.strip()
+            and_clauses.append({"source": params.source.strip()})
 
-        # 3. Status filter (OPEN, CLOSED)
+        # 3. Status filter (OPEN, CLOSED) based on deadline and status
         if params.status and params.status.strip() and params.status != "ALL":
-            query["status"] = params.status.strip()
+            st = params.status.strip().upper()
+            now_utc = datetime.now(timezone.utc)
+            if st == "CLOSED":
+                # Tender is closed if deadline is in past OR status is CLOSED/CANCELLED
+                and_clauses.append({
+                    "$or": [
+                        {"status": "CLOSED"},
+                        {"status": "CANCELLED"},
+                        {"closing_date": {"$lt": now_utc}}
+                    ]
+                })
+            elif st == "OPEN":
+                # Tender is open if status is not CLOSED/CANCELLED AND (deadline is in future OR no deadline)
+                and_clauses.append({
+                    "status": {"$nin": ["CLOSED", "CANCELLED"]},
+                    "$or": [
+                        {"closing_date": {"$gte": now_utc}},
+                        {"closing_date": None}
+                    ]
+                })
 
         # 4. State / Location filter
         if params.state and params.state.strip():
-            query["location"] = {"$regex": re.escape(params.state.strip()), "$options": "i"}
+            and_clauses.append({"location": {"$regex": re.escape(params.state.strip()), "$options": "i"}})
 
         # 5. Category filter
         if params.category and params.category.strip() and params.category != "ALL":
-            query["category"] = {"$regex": re.escape(params.category.strip()), "$options": "i"}
+            and_clauses.append({"category": {"$regex": re.escape(params.category.strip()), "$options": "i"}})
 
         # 6. Organisation filter
         if params.organisation and params.organisation.strip():
-            query["organisation"] = {"$regex": re.escape(params.organisation.strip()), "$options": "i"}
+            and_clauses.append({"organisation": {"$regex": re.escape(params.organisation.strip()), "$options": "i"}})
 
-        # 7. Value Range
+        # 7. Value Range — compare against emd_amount (always populated) OR tender_value
         if params.min_value is not None or params.max_value is not None:
             val_query: Dict[str, Any] = {}
             if params.min_value is not None:
                 val_query["$gte"] = params.min_value
             if params.max_value is not None:
                 val_query["$lte"] = params.max_value
-            query["tender_value"] = val_query
+            # Match tenders where either emd_amount OR tender_value satisfies the range
+            and_clauses.append({
+                "$or": [
+                    {"emd_amount": val_query},
+                    {"tender_value": val_query}
+                ]
+            })
 
         # 8. Date ranges
         if params.date_from is not None or params.date_to is not None:
@@ -144,11 +172,26 @@ class ScrapedTenderRepository:
                 date_query["$gte"] = params.date_from
             if params.date_to is not None:
                 date_query["$lte"] = params.date_to
-            query["closing_date"] = date_query
+            and_clauses.append({"closing_date": date_query})
+
+        # 9. When sorting by closing_date, automatically restrict to ACTIVE tenders only.
+        #    Sorting expired tenders by deadline is meaningless and clutters results.
+        sort_field = params.sort_by if params.sort_by in ["closing_date", "publication_date", "tender_value", "scraped_at"] else "scraped_at"
+        if sort_field == "closing_date":
+            now_utc = datetime.now(timezone.utc)
+            # Only include tenders that are still open (status not CLOSED/CANCELLED AND deadline in future)
+            and_clauses.append({
+                "status": {"$nin": ["CLOSED", "CANCELLED"]},
+                "$or": [
+                    {"closing_date": {"$gte": now_utc}},
+                    {"closing_date": None}
+                ]
+            })
+
+        query: Dict[str, Any] = {"$and": and_clauses} if and_clauses else {}
 
         # Pagination & Sorting
         skip = (params.page - 1) * params.limit
-        sort_field = params.sort_by if params.sort_by in ["closing_date", "publication_date", "tender_value", "scraped_at"] else "closing_date"
         sort_dir = pymongo.ASCENDING if params.sort_order == 1 else pymongo.DESCENDING
 
         total = await self.collection.count_documents(query)
@@ -173,8 +216,7 @@ class ScrapedTenderRepository:
         Returns high-level statistics for scraped tenders:
         - Total count
         - Counts grouped by source
-        - Counts grouped by status
-        - Total estimated value
+        - Counts grouped by status (checking closing_date against now)
         """
         total = await self.collection.count_documents({})
 
@@ -187,14 +229,17 @@ class ScrapedTenderRepository:
             if doc["_id"]:
                 source_counts[doc["_id"]] = doc["count"]
 
-        # Group by status
-        pipeline_status = [
-            {"$group": {"_id": "$status", "count": {"$sum": 1}}}
-        ]
-        status_counts = {}
-        async for doc in self.collection.aggregate(pipeline_status):
-            if doc["_id"]:
-                status_counts[doc["_id"]] = doc["count"]
+        # Accurate status counts based on deadline and status
+        now_utc = datetime.now(timezone.utc)
+        closed_count = await self.collection.count_documents({
+            "$or": [
+                {"status": "CLOSED"},
+                {"status": "CANCELLED"},
+                {"closing_date": {"$lt": now_utc}}
+            ]
+        })
+        open_count = max(0, total - closed_count)
+        status_counts = {"OPEN": open_count, "CLOSED": closed_count}
 
         return {
             "total_tenders": total,
